@@ -1,0 +1,30 @@
+name: Auto Convert Rulesets
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Process Rulesets
+        run: |
+          urls=(
+            "https://raw.githubusercontent.com/uklans/cache-domains/master/xboxlive.txt"
+          )
+          for url in "${urls[@]}"; do
+            if [[ "$url" =~ raw\.githubusercontent\.com/([^/]+)/([^/]+)/[^/]+/([^/]+)\.txt ]]; then
+              filename="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}.list"
+              curl -s "$url" | sed '/^$/d; /#/d; s/^/DOMAIN,/' > "$filename"
+            fi
+          done
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action"
+          git add *.list
+          git diff --cached --quiet || (git commit -m "Auto-update list formats" && git push)
